@@ -1,0 +1,51 @@
+services:
+  web:
+    restart: always
+    ports:
+      - ${WEB_PORT:-3000}:3000
+    depends_on:
+      - bot
+    build:
+      context: .
+      target: web
+      args:
+        - NEXT_PUBLIC_SSE_BOT_URL=${WEBSITE_URL}/sse
+    environment:
+      - NEXTAUTH_URL=${WEBSITE_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - OWNER_EMAIL=${OWNER_EMAIL}
+      - TRPC_BOT_URL=http://bot:4000/trpc
+      - REDIS_HOST=redis
+
+  bot:
+    restart: always
+    ports:
+      - ${BOT_PORT:-4000}:4000
+    depends_on:
+      - redis
+    build:
+      context: .
+      target: bot
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - YOUTUBE_COOKIE=${YOUTUBE_COOKIE}
+      - REDIS_HOST=redis
+
+  redis:
+    restart: always
+    image: redis:7.0.11-alpine
+
+  caddy:
+    restart: always
+    profiles:
+      - with-caddy
+    depends_on:
+      - web
+    image: caddy:2.6.4-alpine
+    ports:
+      - 443:443
+      - 80:80
+    environment:
+      - CADDY_WEBSITE=${WEBSITE_URL}
